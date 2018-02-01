@@ -1,0 +1,480 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "VPC Network",
+  "Parameters": {
+    "EnvironmentName": {
+      "ConstraintDescription": "can contain only alphanumeric characters.",
+      "Description": "EnvironmentName",
+      "MaxLength": "32",
+      "MinLength": "1",
+      "Type": "String",
+      "Default" : "demo"
+    },
+    "VPCRange": {
+      "Description": "CIDR address for the VPC to be created.",
+      "Type": "String",
+      "Default" : "172.18.0.0/16"
+    },
+    "PublicSubnet1Range": {
+      "Description": "Address range for a public subnet to be created in the VPC.",
+      "Type": "String",
+      "Default" : "172.18.0.0/24"
+    },
+    "PublicSubnet2Range": {
+      "Description": "Address range for a public subnet to be created in the VPC.",
+      "Type": "String",
+      "Default" : "172.18.5.0/24"
+    },
+    "SNSEmail": {
+      "Description": "Email address to be subscribed to SNS Notifications",
+      "Type": "String",
+      "Default": "ramakrishna.thandra@gmail.com"
+    },
+    "SNSDescription": {
+      "Description": "Description that will go in the EMAIL Subject",
+      "Type": "String",
+      "Default": "CogntiveScale Demo Notification"
+    }
+  },
+  "Resources": {
+    "ApplicationRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "ec2.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyName": "Application_Takeover",
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Sid": "CloudWatchMerticsAccess",
+                  "Effect": "Allow",
+                  "Action": [
+                    "cloudwatch:GetMetricStatistics",
+                    "cloudwatch:PutMetricData"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                },
+                {
+                  "Sid": "SendNotification",
+                  "Effect": "Allow",
+                  "Action": [
+                    "SNS:*"
+                  ],
+                  "Resource": [
+                    "*"
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "ApplicationRoleProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          {
+            "Ref": "ApplicationRole"
+          }
+        ]
+      }
+    },
+    "ExternalSshAccessSG": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "External SSH Access",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "IpProtocol": "-1"
+          }
+        ],
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": "0.0.0.0/0"
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "EnvironmentName"
+                  },
+                  "-ExternalSshAccessSG"
+                ]
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "VPCSGId": {
+      "Properties": {
+        "GroupDescription": "Default Security Group for VPC",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "IpProtocol": "-1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "EnvironmentName"
+                  },
+                  "-VPCSGId"
+                ]
+              ]
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          }
+        ]
+      },
+      "Type": "AWS::EC2::SecurityGroup"
+    },
+    "gatewayAttachment1": {
+      "DependsOn": "igwMainGateway",
+      "Properties": {
+        "InternetGatewayId": {
+          "Ref": "igwMainGateway"
+        },
+        "VpcId": {
+          "Ref": "VPC"
+        }
+      },
+      "Type": "AWS::EC2::VPCGatewayAttachment"
+    },
+    "igwMainGateway": {
+      "DependsOn": "VPC",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "EnvironmentName"
+                  },
+                  "-InternetGateway"
+                ]
+              ]
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          }
+        ]
+      },
+      "Type": "AWS::EC2::InternetGateway"
+    },
+    "routePublic2Gateway": {
+      "DependsOn": "gatewayAttachment1",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "igwMainGateway"
+        },
+        "RouteTableId": {
+          "Ref": "rtbMainPublic"
+        }
+      },
+      "Type": "AWS::EC2::Route"
+    },
+    "rtbMainPublic": {
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "EnvironmentName"
+                  },
+                  "-PublicRouteTable"
+                ]
+              ]
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          }
+        ]
+      },
+      "Type": "AWS::EC2::RouteTable"
+    },
+    "PublicSubnet1": {
+      "DependsOn": "VPC",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": {
+          "Ref": "PublicSubnet1Range"
+        },
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "EnvironmentName"
+                  },
+                  "-PublicSubnet1"
+                ]
+              ]
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          }
+        ]
+      },
+      "Type": "AWS::EC2::Subnet"
+    },
+    "PublicSubnet2": {
+      "DependsOn": "VPC",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": {
+          "Ref": "PublicSubnet2Range"
+        },
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "EnvironmentName"
+                  },
+                  "-PublicSubnet2"
+                ]
+              ]
+            }
+          },
+          {
+            "Key": "Environment",
+            "Value": {
+              "Ref": "EnvironmentName"
+            }
+          }
+        ]
+      },
+      "Type": "AWS::EC2::Subnet"
+    },
+    "subnetroute1": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "rtbMainPublic"
+        },
+        "SubnetId": {
+          "Ref": "PublicSubnet1"
+        }
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "subnetroute2": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "rtbMainPublic"
+        },
+        "SubnetId": {
+          "Ref": "PublicSubnet2"
+        }
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "VPC": {
+      "Properties": {
+        "CidrBlock": {
+          "Ref": "VPCRange"
+        },
+        "EnableDnsSupport": "true",
+        "EnableDnsHostnames": "true",
+        "InstanceTenancy": "default",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Ref": "EnvironmentName"
+                  },
+                  "-VPC"
+                ]
+              ]
+            }
+          }
+        ]
+      },
+      "Type": "AWS::EC2::VPC"
+    },
+    "topicNotifications": {
+      "Properties": {
+        "DisplayName": {
+          "Ref": "SNSDescription"
+        },
+        "Subscription": [
+          {
+            "Endpoint": {
+              "Ref": "SNSEmail"
+            },
+            "Protocol": "email"
+          }
+        ]
+      },
+      "Type": "AWS::SNS::Topic"
+    },
+    "EIPCogntive": {
+      "Properties": {
+        "Domain": "vpc"
+      },
+      "Type": "AWS::EC2::EIP"
+    }
+  },
+  "Outputs": {
+    "EnvironmentName": {
+      "Description": "EnvironmentName",
+      "Value": {
+        "Ref": "EnvironmentName"
+      }
+    },
+    "ExternalSshAccessSG": {
+      "Description": "External SSH Access",
+      "Value": {
+        "Fn::GetAtt": [
+          "ExternalSshAccessSG",
+          "GroupId"
+        ]
+      }
+    },
+    "VPCSGId": {
+      "Description": "Security Group for the VPC",
+      "Value": {
+        "Fn::GetAtt": [
+          "VPCSGId",
+          "GroupId"
+        ]
+      }
+    },
+    "PublicSubnet1": {
+      "Description": "Security Group for the VPC",
+      "Value": {
+        "Ref": "PublicSubnet1"
+      }
+    },
+    "VPC": {
+      "Description": "VPC ID",
+      "Value": {
+        "Ref": "VPC"
+      }
+    },
+    "topicNotifications": {
+      "Description": "SNS Topic for Notifications",
+      "Value": {
+        "Ref": "topicNotifications"
+      }
+    },
+    "EIP": {
+      "Description": "EIP ID",
+      "Value": {
+        "Ref": "EIPCogntive"
+      }
+    },
+    "InstanceProfile": {
+      "Description": "Application Instance Profile",
+      "Value": {
+        "Ref": "ApplicationRoleProfile"
+      }
+    }
+
+  }
+}

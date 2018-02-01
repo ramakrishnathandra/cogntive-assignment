@@ -1,0 +1,12 @@
+#!/bin/bash
+
+snstopicarn=<%= @snstopicarn %>
+
+status_code=$(curl --write-out %{http_code} --silent --output /dev/null 'http://localhost:80')
+
+if [[ "$status_code" -ne 200 ]] ; then
+  echo "Site status changed to $status_code"
+  aws sns publish --topic-arn "$snstopicarn" --message "cogntive app service is not running" 
+else
+  echo "cogntive app service is running"
+fi
