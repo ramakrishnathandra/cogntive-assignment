@@ -101,51 +101,51 @@ Clone the cogntive-assignment and deploy the stack
    
    Before deploying, please change the External security group in the base network template, currently it is poiting to 0.0.0.0/0, instead you need to add cogntive company n/w ids, in the place 0.0.0.0/0, if you have multiple ips, copy the same json which is securityGroupIngress section for multiple ips
    
-     "ExternalSshAccessSG": {
-      "Type": "AWS::EC2::SecurityGroup",
-      "Properties": {
-        "GroupDescription": "External SSH Access",
-        "SecurityGroupEgress": [
-          {
-            "CidrIp": "0.0.0.0/0",
-            "IpProtocol": "-1"
-          }
-        ],
-        "SecurityGroupIngress": [
-          {
-            "IpProtocol": "tcp",
-            "FromPort": "22",
-            "ToPort": "22",
-            "CidrIp": "0.0.0.0/0"
-          },
-          {
-            "IpProtocol": "tcp",
-            "FromPort": "80",
-            "ToPort": "80",
-            "CidrIp": "0.0.0.0/0"
-          }
-        ],
-        "VpcId": {
-          "Ref": "VPC"
-        },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": {
-              "Fn::Join": [
-                "",
-                [
-                  {
-                    "Ref": "EnvironmentName"
-                  },
-                  "-ExternalSshAccessSG"
-                ]
-              ]
-            }
-          }
-        ]
-      }
-    },
+              "ExternalSshAccessSG": {
+               "Type": "AWS::EC2::SecurityGroup",
+               "Properties": {
+                 "GroupDescription": "External SSH Access",
+                 "SecurityGroupEgress": [
+                   {
+                     "CidrIp": "0.0.0.0/0",
+                     "IpProtocol": "-1"
+                   }
+                 ],
+                 "SecurityGroupIngress": [
+                   {
+                     "IpProtocol": "tcp",
+                     "FromPort": "22",
+                     "ToPort": "22",
+                     "CidrIp": "0.0.0.0/0"
+                   },
+                   {
+                     "IpProtocol": "tcp",
+                     "FromPort": "80",
+                     "ToPort": "80",
+                     "CidrIp": "0.0.0.0/0"
+                   }
+                 ],
+                 "VpcId": {
+                   "Ref": "VPC"
+                 },
+                 "Tags": [
+                   {
+                     "Key": "Name",
+                     "Value": {
+                       "Fn::Join": [
+                         "",
+                         [
+                           {
+                             "Ref": "EnvironmentName"
+                           },
+                           "-ExternalSshAccessSG"
+                         ]
+                       ]
+                     }
+                   }
+                 ]
+               }
+             },
    
    
    Commands to create the cloudfromation stack Create,update,delete and list
