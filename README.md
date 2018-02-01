@@ -136,3 +136,51 @@ Clone the cogntive-assignment and deploy the stack
   
          knife ec2 server list 
          knife ec2 server delete {instanceid}
+         
+         
+ Docker Build to make the image of openresty
+ 
+    1) git clone the openrety project (git clone https://github.com/openresty/openresty.git )
+    2) go to the openresty folder (cd openresty)
+    3) git checkout v1.13.6.1
+    4) make  (Note: make is failing with following error)
+        mv: cannot stat ‘simpl-ngx_devel_kit-*’: No such file or directory
+        make: *** [all] Error 1
+    5) Change the below mentioned line in util/mirror-tarballs
+         ver=0.3.0
+         $root/util/get-tarball "https://github.com/simpl/ngx_devel_kit/tarball/v$ver" -O ngx_devel_kit-$ver.tar.gz
+         tar -xzf ngx_devel_kit-$ver.tar.gz || exit 1
+         mv simpl-ngx_devel_kit-* ngx_devel_kit-$ver || exit 1
+
+         to
+
+         ver=0.3.0
+         $root/util/get-tarball "https://github.com/simpl/ngx_devel_kit/tarball/v$ver" -O ngx_devel_kit-$ver.tar.gz
+         tar -xzf ngx_devel_kit-$ver.tar.gz || exit 1
+         mv ngx_devel_kit-* ngx_devel_kit-$ver || exit 1
+
+    6) install dos2unix and mercurial As i am using ubuntu as my local machine (sudo apt-get install -y dos2unix mercurial)
+    7) then run make (make)
+    8) which will build the tar file
+      
+
+Docker open Resty
+
+      1) Becuase of the above error, Just downlaod the package & made the image, please refer Dockerfile
+      2) Create git hub repository to upload the openresty image
+      3) Same thing used in chef recipe.
+
+Commands to build& push the docker image to repository
+
+     1) docker login -u={username} -p={password} 
+     2) docker build -t ramakrishna2106/cogntive:latest .
+     3) docker push ramakrishna2106/cogntive:latest
+     
+Command to run the docker image
+
+     1) docker run --name openresty -d ramakrishna2106/cogntive:latest
+     2) docker ps -a ( To list the containers)
+     3) docker images (to list the images)
+
+ 
+ 
