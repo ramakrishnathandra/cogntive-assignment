@@ -97,7 +97,23 @@ Clone the cogntive-assignment and deploy the stack
    
    3) Create the keypair in the region where we are going to launch the stack and copy the key pair in your work station
    
-   4) base-network.template will Create a VPC, Subnets, Security Groups, EIP, Internet Gateway, Route Tables
+   4) base-network.template will Create a VPC, Subnets, Security Groups, EIP, Internet Gateway, Route Tables, SNS Topic Arn, InstancdProfile Name
+   
+   Commands to create the cloudfromation stack Create,update,delete and list
+   
+      1) Trigger the cloudfromation using following command
+          
+             aws cloudformation create-stack --stack-name demo --template-body file://base-network.template --parameters ParameterKey=EnvironmentName,ParameterValue=Demo --region us-west-2 --disable-rollback --timeout-in-minutes 120 --capabilities CAPABILITY_IAM
+
+      2) Describe the created stack to get the output parameters
+        
+        aws cloudformation describe-stacks --stack-name demo
+
+      3) Delete the created stack using following command
+     
+        aws cloudformation delete-stack --stack-name demo
+   
+   
    
    5) ./deploy.sh will upload the databag, cookbook and create the ec2 box to launch openresty server, please find the deploy.sh help, none of them are mandatory.
            
@@ -116,3 +132,7 @@ Clone the cogntive-assignment and deploy the stack
                 -r aws instance profile name
                 -h help
 
+  6) Delete the created ec2-box with knife command, ist command will list the instances, and pass the instanceid in second command
+  
+         knife ec2 server list 
+         knife ec2 server delete {instanceid}
